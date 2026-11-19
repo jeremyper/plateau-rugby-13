@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mode d'emploi · Plateau rugby à 13</title>
+<meta name="description" content="Installer et utiliser l'appli Plateau rugby à 13 sur Android et sur iPhone.">
+<meta name="theme-color" content="#1B6B3A">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#EDF1EA; --surface:#FFFFFF; --sunk:#E2E9DE; --ink:#14261B; --muted:#56675B; --line:#C9D4C6;
+  --turf:#1B6B3A; --turf-ink:#FFFFFF; --hi:#F2C230; --hi-ink:#1C1A0E; --warn-bg:#FBF1CF;
+  --pitch:#1B6B3A; --pitch2:#21773F;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1A13; --surface:#17261C; --sunk:#1F3226; --ink:#E8F0E6; --muted:#9AAF9F; --line:#2B4031;
+    --turf:#3FAE68; --turf-ink:#06130B; --warn-bg:#2E2A14; --pitch:#1D5734; --pitch2:#22633C;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1A13; --surface:#17261C; --sunk:#1F3226; --ink:#E8F0E6; --muted:#9AAF9F; --line:#2B4031;
+  --turf:#3FAE68; --turf-ink:#06130B; --warn-bg:#2E2A14; --pitch:#1D5734; --pitch2:#22633C;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:500 17px/1.5 var(--body)}
+a{color:var(--turf);font-weight:600;text-underline-offset:3px}
+:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+.hero{color:#fff;background:repeating-linear-gradient(90deg,var(--pitch) 0 36px,var(--pitch2) 36px 72px);padding:calc(28px + env(safe-area-inset-top,0px)) 0 30px}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.brand img{width:52px;height:52px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.eyebrow{font:600 14px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;opacity:.9}
+h1{font:700 40px/1 var(--display);margin:0 0 10px;text-wrap:balance}
+.lead{margin:0 0 18px;max-width:52ch;opacity:.95}
+.cta{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:10px 22px;border-radius:12px;background:var(--hi);color:var(--hi-ink);font-weight:700;text-decoration:none}
+
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 6px}
+.toc a{border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:44px;display:inline-flex;align-items:center;text-decoration:none;font-size:15px}
+
+h2{font:700 28px/1.1 var(--display);margin:34px 0 6px;text-wrap:balance}
+h3{font:700 22px/1.1 var(--display);margin:0;display:flex;align-items:center;gap:8px}
+.sub{color:var(--muted);margin:0 0 14px}
+p{margin:0 0 12px}
+
+.two{display:grid;gap:12px}
+@media (min-width:620px){.two{grid-template-columns:1fr 1fr}}
+.card{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;align-content:start}
+.tag{font:600 12px/1 var(--body);background:var(--sunk);color:var(--muted);border-radius:999px;padding:5px 9px}
+
+ol.steps{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:s}
+ol.steps li{counter-increment:s;display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;align-items:start}
+ol.steps li::before{content:counter(s);width:30px;height:30px;border-radius:50%;background:var(--turf);color:var(--turf-ink);font:700 18px/30px var(--display);text-align:center}
+ul.list{margin:0;padding:0;list-style:none;display:grid;gap:10px}
+ul.list li{position:relative;padding-left:22px}
+ul.list li::before{content:"";position:absolute;left:4px;top:.6em;width:8px;height:8px;border-radius:50%;background:var(--turf)}
+.k{display:inline-block;font-weight:700;background:var(--sunk);border-radius:6px;padding:0 6px;white-space:nowrap}
+.ico{display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.box{border-radius:14px;padding:14px 16px;margin:0 0 12px;border:1.5px solid var(--line)}
+.box strong{display:block;font:700 21px/1.15 var(--display);margin-bottom:4px}
+.box p:last-child{margin:0}
+.box.ok{background:var(--surface);border-color:var(--turf);border-left-width:6px}
+.box.warn{background:var(--warn-bg);border-color:var(--hi);border-left-width:6px}
+
+footer{margin:40px 0 0;padding:18px 0 calc(28px + env(safe-area-inset-bottom,0px));border-top:1.5px solid var(--line);color:var(--muted);font-size:15px}
+@media (max-width:380px){h1{font-size:34px}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="brand"><img src="icon-192.png" alt=""><span class="eyebrow">Mode d'emploi</span></div>
+    <h1>Plateau rugby à 13</h1>
+    <p class="lead">Chrono, score et sonnerie de fin pour chaque match, classement et météo du jour. Gratuit, sans compte : tout reste sur votre téléphone.</p>
+    <a class="cta" href="./">Ouvrir l'appli</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="toc" aria-label="Sommaire">
+    <a href="#installer">Installer</a>
+    <a href="#avant">Avant le plateau</a>
+    <a href="#pendant">Pendant les matchs</a>
+    <a href="#verrouille">Téléphone verrouillé</a>
+    <a href="#son">Son et vibration</a>
+    <a href="#donnees">Vos données</a>
+  </nav>
+
+  <h2 id="installer">Installer l'appli</h2>
+  <p class="sub">Une seule fois, de préférence chez vous avec du réseau. L'appli s'installe depuis le navigateur, sans passer par un magasin d'applis.</p>
+  <div class="two">
+    <section class="card" aria-labelledby="t-android">
+      <h3 id="t-android">Android <span class="tag">Chrome</span></h3>
+      <ol class="steps">
+        <li><span>Ouvrez le lien dans <b>Chrome</b>. S'il s'ouvre dans WhatsApp ou Facebook, touchez <span class="k">⋮</span> puis <b>Ouvrir dans Chrome</b>.</span></li>
+        <li><span>Touchez <span class="k">⋮</span> en haut à droite, puis <b>Ajouter à l'écran d'accueil</b> et <b>Installer</b>.</span></li>
+        <li><span>Ouvrez l'appli avec sa nouvelle icône <b>Plateau 13</b>.</span></li>
+        <li><span>Onglet <b>Plateau</b> : cochez <b>Notification du téléphone</b>, touchez <b>Autoriser</b>, puis <b>Tester l'alerte</b>.</span></li>
+      </ol>
+    </section>
+    <section class="card" aria-labelledby="t-iphone">
+      <h3 id="t-iphone">iPhone <span class="tag">Safari</span></h3>
+      <ol class="steps">
+        <li><span>Ouvrez le lien dans <b>Safari</b>.</span></li>
+        <li><span>Touchez <b>Partager</b> <svg class="ico" viewBox="0 0 24 24" aria-label="icône Partager" role="img"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M8 11H6v10h12V11h-2"/></svg> (en bas de l'écran, ou dans le menu <span class="k">···</span> sur les iPhone récents), puis <b>Sur l'écran d'accueil</b> et <b>Ajouter</b>.</span></li>
+        <li><span>Ouvrez toujours l'appli avec son icône <b>Plateau 13</b> : c'est là que sont vos données, et les notifications ne marchent que comme ça.</span></li>
+        <li><span>Onglet <b>Plateau</b> : cochez <b>Notification du téléphone</b>, touchez <b>Autoriser</b>, puis <b>Tester l'alerte</b>.</span></li>
+      </ol>
+    </section>
+  </div>
+
+  <h2 id="avant">Avant le plateau</h2>
+  <ul class="list">
+    <li>Onglet <b>Plateau</b> : nom, date et équipes. Mettez une étoile ★ sur les équipes de vos enfants : le filtre <b>Mes équipes</b> n'affichera que leurs matchs.</li>
+    <li><b>Format des matchs</b> : une ou deux mi-temps, et leur durée.</li>
+    <li>Onglet <b>Matchs</b> → <b>Générer le planning</b> : toutes les rencontres, réparties sur les terrains, sans qu'une équipe joue deux fois en même temps.</li>
+    <li>Onglet <b>Météo</b> : cherchez la ville ou touchez <b>Utiliser ma position</b> tant que vous avez du réseau. La prévision reste ensuite dans le téléphone.</li>
+    <li>Montez le volume des médias, puis touchez <b>Tester l'alerte</b> pour l'entendre une fois.</li>
+    <li>Chargez la batterie : pendant les matchs, l'écran reste allumé.</li>
+  </ul>
+
+  <h2 id="pendant">Pendant les matchs</h2>
+  <ul class="list">
+    <li><b>Coup d'envoi</b> lance le chrono du match, et l'écran reste allumé tout seul.</li>
+    <li>Plusieurs matchs en même temps : l'onglet <b>Direct</b> les empile, chacun avec son chrono.</li>
+    <li>Touchez <b>Essai</b>, <b>Transfo</b>, <b>Pénalité</b> ou <b>Drop</b> du côté de l'équipe qui marque. En cas d'erreur, touchez <b>Annuler</b>.</li>
+    <li>1 minute avant la fin : double bip.</li>
+    <li>Temps écoulé : la sonnerie et la vibration se répètent pendant une minute au plus. Au rugby, le jeu continue jusqu'au ballon mort : touchez <b>Couper la sonnerie</b>, puis <b>Fin de la mi-temps</b> au coup de sifflet.</li>
+    <li>Le <b>Classement</b> se met à jour tout seul. <b>Copier le récap</b> donne un texte à coller dans WhatsApp.</li>
+  </ul>
+
+  <h2 id="verrouille">Si le téléphone se verrouille</h2>
+  <div class="box ok">
+    <strong>Rien n'est perdu</strong>
+    <p>Chaque touche est enregistrée dans le téléphone, et les chronos se calculent à partir de l'heure du coup d'envoi. Même si l'écran s'éteint, même si le téléphone ferme la page : en revenant, les scores sont là et les chronos affichent le bon temps, sans rien recharger.</p>
+  </div>
+  <div class="box warn">
+    <strong>La sonnerie, elle, peut attendre</strong>
+    <p>Écran éteint, le téléphone met la page en pause : l'alerte de fin sonne alors au moment où vous rallumez l'écran. C'est pour ça que l'appli garde l'écran allumé dès le coup d'envoi. Le bouton marche/arrêt l'éteint quand même : évitez-le pendant un match, et baissez plutôt la luminosité.</p>
+  </div>
+  <p>Après une réouverture, touchez l'écran une fois : le téléphone exige ce geste avant de laisser l'appli sonner et vibrer. Un message vous le rappelle dans l'onglet Direct.</p>
+
+  <h2 id="son">Son et vibration</h2>
+  <div class="two">
+    <section class="card" aria-labelledby="s-android">
+      <h3 id="s-android">Android</h3>
+      <ul class="list">
+        <li>La sonnerie suit le <b>volume des médias</b> (pas celui des appels) : montez-le avant les matchs.</li>
+        <li>La vibration accompagne chaque sonnerie.</li>
+        <li>La notification s'affiche aussi quand vous êtes dans une autre appli.</li>
+      </ul>
+    </section>
+    <section class="card" aria-labelledby="s-iphone">
+      <h3 id="s-iphone">iPhone</h3>
+      <ul class="list">
+        <li>La sonnerie suit le <b>volume des médias</b> : réglez-le avec les boutons pendant que l'appli est ouverte.</li>
+        <li>Avec iOS 17 ou plus récent, la sonnerie passe même en mode silencieux. Sinon, désactivez le mode silencieux.</li>
+        <li>Une page web ne peut pas faire vibrer un iPhone : comptez sur la sonnerie, et sur la notification quand l'appli est en arrière-plan.</li>
+      </ul>
+    </section>
+  </div>
+  <p style="margin-top:12px">Dans le doute, faites <b>Tester l'alerte</b> dans les conditions du match : même volume, même mode silencieux ou Ne pas déranger.</p>
+
+  <h2 id="donnees">Vos données</h2>
+  <ul class="list">
+    <li>Tout reste dans votre téléphone : pas de compte, aucune équipe ni aucun score n'est envoyé.</li>
+    <li>Deux exceptions : la météo (la ville ou la position part chez Open-Meteo pour la prévision) et les polices d'écriture (chargées chez Google Fonts).</li>
+    <li>Chaque téléphone a son propre plateau, rien n'est partagé entre téléphones. Pour en changer : <b>Plateau</b> → <b>Copier la sauvegarde</b>, envoyez-vous le texte, puis <b>Restaurer</b> sur l'autre téléphone.</li>
+    <li>Effacer les données du navigateur efface aussi le plateau : faites une sauvegarde avant.</li>
+    <li>Sans réseau : après une première ouverture avec du réseau, l'appli s'ouvre aussi hors connexion. Seule la météo a besoin du réseau pour se mettre à jour.</li>
+  </ul>
+
+  <footer>
+    Appli libre et gratuite, sous licence MIT. Code source : <a href="https://github.com/jeremyper/plateau-rugby-13">github.com/jeremyper/plateau-rugby-13</a>
+  </footer>
+</main>
+</body>
+</html>

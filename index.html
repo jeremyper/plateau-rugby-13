@@ -1,6 +1,12 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Plateau rugby à 13</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Plateau rugby à 13</title>
+<meta name="description" content="Appli de bord de terrain : chrono, score et alerte de fin pour chaque match, classement et météo du plateau.">
 <meta name="theme-color" content="#1B6B3A">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
@@ -212,7 +218,8 @@ nav .bdg{position:absolute;top:6px;left:calc(50% + 6px);min-width:18px;height:18
 @media (max-width:370px){.grid3{grid-template-columns:repeat(2,minmax(0,1fr))}.clk{font-size:38px}.sd .pts{font-size:40px}}
 @media (prefers-reduced-motion:reduce){.bump,.al,.pill .dot{animation:none}#toast{transition:none}}
 </style>
-
+</head>
+<body>
 <div id="alerts" aria-live="assertive"></div>
 <div id="app"></div>
 <nav id="nav" aria-label="Navigation principale">
@@ -246,7 +253,7 @@ const LABEL={try:'Essai',conv:'Transformation',pen:'Pénalité',drop:'Drop'};
 /* ---------- Données ---------- */
 function def(){return {name:'Plateau du jour',date:todayISO(),teams:[],matches:[],
   rules:{try:4,conv:2,pen:2,drop:1,win:2,draw:1,loss:0},format:{periods:2,minutes:15},
-  includeLive:false,sound:true,vibrate:true,preAlert:true,notify:false,place:null,weather:null}}
+  includeLive:false,sound:true,vibrate:true,preAlert:true,notify:false,autoWake:true,place:null,weather:null}}
 function normMatch(m,fmt){
   m.field=m.field||'';m.time=m.time||'';
   m.periods=+m.periods||fmt.periods;m.minutes=+m.minutes||fmt.minutes;
@@ -315,18 +322,41 @@ function statusPill(m){
 }
 
 /* ---------- Alertes de fin de chrono ---------- */
-let AC=null;
-function unlockAudio(){try{if(!AC){const C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C()}if(AC&&AC.state==='suspended')AC.resume()}catch(e){}}
-function beep(kind){
-  if(!S.sound||!AC)return;
+/* Son : bips carrés à pleine amplitude vers 2 000-2 600 Hz, la zone où un haut-parleur de téléphone porte le plus.
+   Sur iPhone (iOS 17 et plus), la session audio « playback » fait sonner même en mode silencieux. */
+let AC=null,OUT=null;
+const SEQ={
+  end:[[0,.13,2600],[.2,.13,2000],[.4,.13,2600],[.6,.13,2000],[1.05,.13,2600],[1.25,.13,2000],[1.45,.13,2600],[1.65,.13,2000]],
+  pre:[[0,.18,2300],[.32,.18,2300]]
+};
+const audioReady=()=>!!AC&&AC.state==='running';
+function unlockAudio(){
+  try{if(navigator.audioSession&&navigator.audioSession.type!=='playback')navigator.audioSession.type='playback'}catch(e){}
   try{
-    const t0=AC.currentTime+.02,seq=kind==='end'?[[0,.22,880],[.32,.22,880],[.64,.7,1175]]:[[0,.16,880],[.26,.16,880]];
-    seq.forEach(([d,len,f])=>{const o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=f;
-      g.gain.setValueAtTime(.0001,t0+d);g.gain.exponentialRampToValueAtTime(.22,t0+d+.02);g.gain.exponentialRampToValueAtTime(.0001,t0+d+len);
-      o.connect(g);g.connect(AC.destination);o.start(t0+d);o.stop(t0+d+len+.05)});
+    if(!AC){const C=window.AudioContext||window.webkitAudioContext;if(C){AC=new C();OUT=AC.createGain();OUT.gain.value=.95;OUT.connect(AC.destination)}}
+    if(AC&&AC.state!=='running'){const p=AC.resume();if(p&&p.catch)p.catch(()=>{})}
   }catch(e){}
 }
-const vib=p=>{try{if(S.vibrate&&navigator.vibrate)navigator.vibrate(p)}catch(e){}};
+function beep(kind){
+  if(!S.sound)return;
+  unlockAudio();if(!AC)return;
+  const play=()=>{try{
+    const t0=AC.currentTime+.03;
+    SEQ[kind==='end'?'end':'pre'].forEach(([d,len,f])=>{
+      const o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=f;
+      g.gain.setValueAtTime(0,t0+d);g.gain.linearRampToValueAtTime(1,t0+d+.004);
+      g.gain.setValueAtTime(1,t0+d+len-.004);g.gain.linearRampToValueAtTime(0,t0+d+len);
+      o.connect(g);g.connect(OUT);o.start(t0+d);o.stop(t0+d+len+.02);
+    });
+  }catch(e){}};
+  if(AC.state==='running')play();
+  else{try{const p=AC.resume();if(p&&p.then)p.then(play,()=>{});else play()}catch(e){}}
+}
+const canVibrate='vibrate' in navigator;
+const vib=p=>{try{if(S.vibrate&&canVibrate)navigator.vibrate(p)}catch(e){}};
+/* Après une réouverture, le téléphone exige un toucher avant d'autoriser le son et la vibration */
+const touched=()=>!navigator.userActivation||navigator.userActivation.hasBeenActive;
+const needTouch=()=>(S.sound&&!audioReady())||(S.vibrate&&canVibrate&&!touched());
 function notifStatus(){if(embedded)return 'embedded';if(!('Notification' in window))return 'unsupported';if(!window.isSecureContext)return 'insecure';return Notification.permission}
 let swReg=null;
 if(!embedded&&'serviceWorker' in navigator&&window.isSecureContext){navigator.serviceWorker.register('sw.js').then(r=>{swReg=r}).catch(()=>{})}
@@ -343,41 +373,61 @@ async function toggleNotify(on){
   try{const p=st==='granted'?'granted':await Notification.requestPermission();S.notify=p==='granted';if(p!=='granted')toast('Notifications refusées par le navigateur')}catch(e){S.notify=false}
   save();render();
 }
+/* Fin de chrono : sonnerie et vibration reprennent toutes les 2,5 s jusqu'à « Couper la sonnerie »,
+   la fin de la période, ou 1 minute au plus (10 s pour le test). Au rugby le jeu continue jusqu'au ballon mort :
+   on coupe la sonnerie, l'alerte reste affichée avec son bouton de fin. */
+const RING_EVERY=2500,RING_MAX=60000,VIB_END=[700,150,700,150,700],VIB_PRE=[300,120,300];
+let ringT=null;
+function ringStep(){
+  const now=Date.now();let changed=false;
+  alerts.forEach(a=>{if(a.ring&&now-a.at>=a.max){a.ring=false;changed=true}});
+  if(changed)renderAlerts();
+  if(!alerts.some(a=>a.ring)){stopRing();return}
+  beep('end');vib(VIB_END);
+}
+function stopRing(){if(ringT){clearInterval(ringT);ringT=null}try{if(canVibrate)navigator.vibrate(0)}catch(e){}}
+function syncRing(){if(!alerts.some(a=>a.ring))stopRing();else if(!ringT){ringStep();ringT=setInterval(ringStep,RING_EVERY)}}
 function signal(kind,title,body,mid){
   alerts=alerts.filter(a=>!mid||a.mid!==mid);
-  const a={id:uid(),mid,kind,title,body};alerts.push(a);renderAlerts();
-  vib(kind==='end'?[400,150,400,150,800]:[200,100,200]);
-  beep(kind);
+  const a={id:uid(),mid,kind,title,body,at:Date.now(),max:mid?RING_MAX:10000,ring:kind==='end'&&(S.sound||S.vibrate)};
+  alerts.push(a);renderAlerts();
   sysNotify(title,body,'p13-'+(mid||'test'));
-  if(kind==='pre')setTimeout(()=>{alerts=alerts.filter(x=>x.id!==a.id);renderAlerts()},15000);
+  if(kind==='end'){syncRing();return}
+  vib(VIB_PRE);beep('pre');
+  setTimeout(()=>{alerts=alerts.filter(x=>x.id!==a.id);renderAlerts()},15000);
 }
 function fireAlert(m,kind){
   const body=tname(m.a)+' – '+tname(m.b)+(m.field?', '+m.field:'');
   const title=kind==='end'?'Temps écoulé : '+periodName(m).toLowerCase():'Plus qu’une minute : '+periodName(m).toLowerCase();
   signal(kind,title,body,m.id);
 }
-function dismissAlertsFor(mid){alerts=alerts.filter(a=>a.mid!==mid)}
+function dismissAlertsFor(mid){alerts=alerts.filter(a=>a.mid!==mid);syncRing()}
 function renderAlerts(){
   $('#alerts').innerHTML=alerts.map(a=>{
     const m=a.mid?byId(a.mid):null;
     const act=a.kind==='end'&&m&&m.status==='live'?'<button class="solid" data-action="al-end" data-id="'+a.id+'">'+endLabel(m)+'</button>':'';
-    return '<div class="al '+a.kind+'" role="alert"><strong>'+esc(a.title)+'</strong><span>'+esc(a.body)+'</span><div class="row">'+act+'<button data-action="al-close" data-id="'+a.id+'">Fermer</button></div></div>';
+    const off=a.ring?'<button data-action="al-mute" data-id="'+a.id+'">Couper la sonnerie</button>':'<button data-action="al-close" data-id="'+a.id+'">Fermer</button>';
+    return '<div class="al '+a.kind+'" role="alert"><strong>'+esc(a.title)+'</strong><span>'+esc(a.body)+'</span><div class="row">'+act+off+'</div></div>';
   }).join('');
 }
 
 /* ---------- Écran allumé ---------- */
 const wakeOK='wakeLock' in navigator;
-let wake=null,wantWake=false;
-async function setWake(on){
-  wantWake=on;
-  if(on){try{wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>{wake=null;if(ui.view==='live')render()})}catch(e){wake=null;wantWake=false;toast('Le navigateur refuse de garder l’écran allumé ici')}}
+let wake=null,wantWake=false,wakeBusy=false,wakeDenied=false;
+async function setWake(on,auto){
+  if(wakeBusy)return;wakeBusy=true;wantWake=on;
+  if(on){try{wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>{wake=null;if(ui.view==='live')render()})}catch(e){wake=null;wantWake=false;if(auto)wakeDenied=true;else toast('Le navigateur refuse de garder l’écran allumé ici')}}
   else{try{if(wake)await wake.release()}catch(e){}wake=null}
-  render();
+  wakeBusy=false;
+  if(ui.view==='live')render();
 }
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){tick();if(wantWake&&!wake)setWake(true)}});
+/* Écran allumé automatique : au coup d'envoi, et au premier toucher après une réouverture si des matchs sont en cours */
+function autoWake(){if(S.autoWake&&wakeOK&&!wake&&!ui.wakeOff&&!wakeDenied&&S.matches.some(m=>m.status==='live'||m.status==='break'))setWake(true,true)}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){tick();if(wantWake&&!wake)setWake(true,true)}});
 
 /* ---------- Tic du chrono ---------- */
 function tick(){
+  const hint=$('#touchHint');if(hint)hint.hidden=!needTouch();
   document.querySelectorAll('[data-clock]').forEach(el=>{
     const m=byId(el.getAttribute('data-clock'));if(!m)return;
     const t=clockText(m);if(el.textContent!==t)el.textContent=t;
@@ -525,7 +575,7 @@ function head(extra){
   return '<header class="top"><div><h1>'+esc(S.name)+'</h1><div class="date">'+esc(fmtDate(S.date))+(S.place?', '+esc(S.place.name):'')+'</div></div>'+(extra||'')+'</header>';
 }
 function emptyTeams(){
-  return '<div class="empty"><p>Ajoutez au moins deux équipes pour créer les matchs du plateau.</p><button class="btn primary" data-action="nav" data-view="plateau">Ajouter les équipes</button><button class="link" data-action="demo">Essayer avec un exemple</button></div>';
+  return '<div class="empty"><p>Ajoutez au moins deux équipes pour créer les matchs du plateau.</p><button class="btn primary" data-action="nav" data-view="plateau">Ajouter les équipes</button><button class="link" data-action="demo">Essayer avec un exemple</button><a class="link" href="guide.html" target="_blank" rel="noopener">Mode d’emploi (Android et iPhone)</a></div>';
 }
 const followChip=()=>'<div class="chips"><button class="chip" data-action="followed" aria-pressed="'+ui.followed+'">★ Mes équipes</button></div>';
 function confirmBtn(kind,id,label,cls){
@@ -568,6 +618,7 @@ function viewLive(){
   const next=sortByTime(S.matches.filter(m=>m.status==='todo'&&visible(m)));
   const done=S.matches.filter(m=>m.status==='done'&&visible(m)).length;
   h+='<h2>En cours <span class="cnt">'+live.length+'</span></h2>';
+  if(live.length)h+='<div class="notice" id="touchHint"'+(needTouch()?'':' hidden')+'>Touchez l’écran une fois pour réactiver la sonnerie et la vibration des alertes.</div>';
   h+=live.length?'<div class="board">'+live.map(boardCard).join('')+'</div>'
     :'<div class="empty"><p>Aucun match en cours. Chaque match a son propre chrono : lancez autant de coups d’envoi que de terrains occupés.</p></div>';
   h+='<h2>À venir <span class="cnt">'+next.length+'</span></h2>';
@@ -729,7 +780,7 @@ function weatherError(){
 }
 function viewWeather(){
   let h=head()+'<h2>Météo heure par heure</h2>';
-  if(embedded)h+='<div class="notice">Dans l’appli Claude, cette page n’a ni accès à Internet ni à votre position : la météo s’affiche avec la version installée sur votre serveur (en HTTPS).</div>';
+  if(embedded)h+='<div class="notice">Cette page est affichée à l’intérieur d’une autre : elle n’a accès ni à Internet ni à votre position. Ouvrez l’appli directement dans le navigateur, à son adresse en HTTPS.</div>';
   h+='<div class="panel"><div class="locline">'+(S.place?'<div><strong>'+esc(S.place.name)+'</strong><small>'+esc(S.place.detail||'')+'</small></div>':'<p class="note">Choisissez le lieu du plateau. La date est celle de l’onglet Plateau : '+esc(fmtDate(S.date).toLowerCase())+'.</p>')+
     '<button class="btn" data-action="geo"'+(W.busy?' disabled':'')+'>'+(W.busy==='geo'?'Localisation…':'Utiliser ma position')+'</button></div>'+
     '<div class="field"><label for="wq">Ou cherchez la ville du plateau</label><div class="inrow"><input id="wq" type="search" value="'+esc(W.q)+'" placeholder="Ex. Lézignan-Corbières" enterkeyhint="search" autocomplete="off"><button class="btn primary" data-action="wsearch"'+(W.busy?' disabled':'')+'>'+(W.busy==='search'?'…':'Chercher')+'</button></div></div>'+
@@ -745,8 +796,8 @@ function viewPlateau(){
   const r=S.rules,f=S.format,ns=notifStatus();
   const num=(k,l)=>'<div class="field"><label for="r_'+k+'">'+l+'</label><input id="r_'+k+'" data-rule="'+k+'" type="number" inputmode="numeric" min="0" value="'+r[k]+'"></div>';
   const tick=(k,l,on,dis)=>'<label class="tick"><input type="checkbox" id="s_'+k+'" data-set="'+k+'"'+(on?' checked':'')+(dis?' disabled':'')+'><span>'+l+'</span></label>';
-  const nmsg={embedded:'Indisponible dans l’appli Claude. Fonctionne avec la version installée sur votre serveur.',unsupported:'Ce navigateur ne gère pas les notifications. Sur iPhone, ajoutez d’abord la page à l’écran d’accueil.',insecure:'Nécessite une adresse en HTTPS.',denied:'Bloquées pour cette page dans les réglages du navigateur.',default:'Le téléphone demandera votre accord.',granted:S.notify?'Activées.':'Autorisées. Cochez pour les recevoir.'}[ns]||'';
-  let h=head()+'<h2>Journée</h2><div class="panel"><div class="grid2"><div class="field"><label for="dn">Nom du plateau</label><input id="dn" type="text" value="'+esc(S.name)+'" autocomplete="off"></div><div class="field"><label for="dd">Date</label><input id="dd" type="date" value="'+esc(S.date)+'"></div></div></div>';
+  const nmsg={embedded:'Indisponible quand la page est affichée à l’intérieur d’une autre. Ouvrez l’appli directement dans le navigateur.',unsupported:'Ce navigateur ne gère pas les notifications. Sur iPhone, ajoutez d’abord la page à l’écran d’accueil.',insecure:'Nécessite une adresse en HTTPS.',denied:'Bloquées pour cette page dans les réglages du navigateur.',default:'Le téléphone demandera votre accord.',granted:S.notify?'Activées.':'Autorisées. Cochez pour les recevoir.'}[ns]||'';
+  let h=head()+'<p class="note"><a class="link" href="guide.html" target="_blank" rel="noopener">Mode d’emploi (Android et iPhone)</a></p><h2>Journée</h2><div class="panel"><div class="grid2"><div class="field"><label for="dn">Nom du plateau</label><input id="dn" type="text" value="'+esc(S.name)+'" autocomplete="off"></div><div class="field"><label for="dd">Date</label><input id="dd" type="date" value="'+esc(S.date)+'"></div></div></div>';
   h+='<h2>Équipes</h2><div class="panel"><div class="field"><label for="tn">Nom de l’équipe ou du club</label><div class="inrow"><input id="tn" type="text" placeholder="Ex. Villeneuve U11" autocomplete="off" enterkeyhint="done"><button class="btn primary" data-action="add-team">Ajouter</button></div></div>';
   if(S.teams.length){
     h+='<ul class="tlist">'+S.teams.map(t=>'<li><span class="nm">'+esc(t.name)+'</span><button class="ib'+(t.follow?' on':'')+'" aria-label="Suivre '+esc(t.name)+'" aria-pressed="'+!!t.follow+'" data-action="follow" data-id="'+t.id+'">'+(t.follow?'★':'☆')+'</button><button class="ib" aria-label="Supprimer '+esc(t.name)+'" data-action="del-team" data-id="'+t.id+'">✕</button></li>').join('')+'</ul>';
@@ -757,10 +808,15 @@ function viewPlateau(){
     '<div class="field"><label for="fM">Durée '+(f.periods===2?'d’une mi-temps':'d’une période')+' (min)</label><input id="fM" type="number" inputmode="numeric" min="1" value="'+f.minutes+'"></div></div>'+
     '<button class="btn" data-action="apply-format">Appliquer aux matchs à jouer</button><p class="note">S’applique aux nouveaux matchs. Chaque match garde son réglage, modifiable dans sa fiche.</p></div>';
   h+='<h2>Alertes de fin de chrono</h2><div class="panel">'+
-    tick('sound','Bip sonore',S.sound)+tick('vibrate','Vibration',S.vibrate)+tick('preAlert','Prévenir aussi 1 minute avant la fin',S.preAlert)+
+    tick('sound','Sonnerie',S.sound)+tick('vibrate','Vibration',S.vibrate&&canVibrate,!canVibrate)+
+    (canVibrate?'':'<p class="note">Ce téléphone ne laisse pas une page web vibrer (c’est le cas de l’iPhone) : comptez sur la sonnerie, et sur la notification quand l’appli est en arrière-plan.</p>')+
+    tick('preAlert','Prévenir aussi 1 minute avant la fin',S.preAlert)+
     tick('notify','Notification du téléphone',S.notify&&ns==='granted',['embedded','unsupported','insecure','denied'].indexOf(ns)>=0)+
-    '<p class="note">'+nmsg+'</p><button class="btn" data-action="test-alert">Tester l’alerte</button>'+
-    '<p class="note">L’alerte part tant que la page reste ouverte. Pendant les matchs, gardez l’écran allumé (bouton dans Direct) : écran verrouillé, le téléphone peut la retarder.</p></div>';
+    '<p class="note">'+nmsg+'</p>'+
+    (wakeOK?tick('autoWake','Garder l’écran allumé dès le coup d’envoi',S.autoWake):'')+
+    '<button class="btn" data-action="test-alert">Tester l’alerte</button>'+
+    '<p class="note">En fin de chrono, la sonnerie et la vibration se répètent jusqu’à « Couper la sonnerie » (1 minute au plus). Le son suit le volume des médias : montez-le avant les matchs.</p>'+
+    '<p class="note">Écran éteint, le téléphone peut retarder l’alerte jusqu’à ce qu’on le rallume. Les chronos et les scores, eux, ne perdent rien.</p></div>';
   h+='<h2>Points marqués</h2><div class="panel"><div class="grid2">'+num('try','Essai')+num('conv','Transformation')+num('pen','Pénalité')+num('drop','Drop')+'</div></div>';
   h+='<h2>Points au classement</h2><div class="panel"><div class="grid3">'+num('win','Victoire')+num('draw','Nul')+num('loss','Défaite')+'</div></div>';
   h+='<h2>Sauvegarde</h2><div class="panel"><p class="note">Les données restent sur cet appareil. Copiez la sauvegarde pour la garder ou la passer sur un autre téléphone.</p>'+
@@ -785,6 +841,7 @@ function render(){
 function go(v){
   if(v==='detail'&&ui.view!=='detail')ui.from=ui.view==='live'?'live':'matches';
   ui.view=v;ui.confirm=null;
+  try{sessionStorage.setItem('plateau13_ui',JSON.stringify({view:ui.view,from:ui.from,sel:ui.sel}))}catch(e){}
   if(v==='weather'&&S.place&&!W.busy)loadWeather(false);
   render();window.scrollTo(0,0);
 }
@@ -806,16 +863,19 @@ function copyText(text,ok){
 }
 
 /* ---------- Actions ---------- */
-document.addEventListener('pointerdown',unlockAudio,{passive:true});
+['pointerdown','pointerup','keydown'].forEach(t=>document.addEventListener(t,unlockAudio,{passive:true}));
+/* Demande au navigateur de ne jamais effacer les données de lui-même (stockage « persistant ») */
+let persistAsked=false;
+function askPersist(){if(persistAsked||embedded)return;persistAsked=true;try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(()=>{})}catch(e){}}
 document.addEventListener('click',ev=>{
-  const el=ev.target.closest('[data-action]');if(!el||el.disabled)return;
-  unlockAudio();
+  unlockAudio();askPersist();
+  const el=ev.target.closest('[data-action]');if(!el||el.disabled){autoWake();return}
   const a=el.getAttribute('data-action'),id=el.getAttribute('data-id'),m=id?byId(id):null;
   switch(a){
     case 'nav':go(el.getAttribute('data-view'));break;
     case 'filter':ui.filter=el.getAttribute('data-f');render();break;
     case 'followed':ui.followed=!ui.followed;render();break;
-    case 'wake':setWake(!wake);break;
+    case 'wake':ui.wakeOff=!!wake;setWake(!wake);break;
     case 'demo':loadDemo();break;
     case 'open':ui.sel=id;go('detail');break;
     case 'back':go(ui.from||'matches');break;
@@ -841,8 +901,9 @@ document.addEventListener('click',ev=>{
       const al=alerts.find(x=>x.id===id),mm=al&&al.mid?byId(al.mid):null;
       alerts=alerts.filter(x=>x.id!==id);
       if(mm&&mm.status==='live'){endPeriod(mm);save();toast(mm.status==='done'?'Match terminé':breakName(mm)+' sifflée')}
-      render();break;}
-    case 'al-close':alerts=alerts.filter(x=>x.id!==id);renderAlerts();break;
+      syncRing();render();break;}
+    case 'al-mute':{const al=alerts.find(x=>x.id===id);if(al)al.ring=false;syncRing();renderAlerts();break;}
+    case 'al-close':alerts=alerts.filter(x=>x.id!==id);syncRing();renderAlerts();break;
     case 'score':
       if(m&&m.status==='live'){const s=el.getAttribute('data-side'),k=el.getAttribute('data-type');
         m.events.push({id:uid(),side:s,type:k,pts:S.rules[k],p:m.period,t:matchMinute(m)});
@@ -872,16 +933,17 @@ document.addEventListener('click',ev=>{
       break;
     case 'reset':
       if(ui.confirm!=='rs'){askConfirm('rs');render();break}
-      S.matches=[];S.date=todayISO();S.weather=null;alerts=[];save();ui.confirm=null;toast('Nouvelle journée prête');go('live');break;
+      S.matches=[];S.date=todayISO();S.weather=null;alerts=[];stopRing();save();ui.confirm=null;toast('Nouvelle journée prête');go('live');break;
     case 'wipe':
       if(ui.confirm!=='wp'){askConfirm('wp');render();break}
-      S=def();alerts=[];save();ui.confirm=null;toast('Tout est effacé');go('plateau');break;
+      S=def();alerts=[];stopRing();save();ui.confirm=null;toast('Tout est effacé');go('plateau');break;
     case 'geo':geoLocate();break;
     case 'wsearch':searchPlace();break;
     case 'wpick':pickPlace(+el.getAttribute('data-i'));break;
     case 'wrefresh':loadWeather(true);break;
     case 'whours':ui.allHours=!ui.allHours;render();break;
   }
+  autoWake();
 });
 document.addEventListener('change',ev=>{
   const t=ev.target;
@@ -915,6 +977,8 @@ if(!embedded){
   const i=document.createElement('link');i.rel='apple-touch-icon';i.href='icon-192.png';document.head.appendChild(i);
 }
 
+/* Si le téléphone a fermé la page (écran verrouillé longtemps), on revient sur le même écran */
+try{const u=JSON.parse(sessionStorage.getItem('plateau13_ui')||'null');if(u&&typeof u.view==='string'){ui.view=u.view;ui.from=u.from||'matches';ui.sel=u.sel||null}}catch(e){}
 render();
 setInterval(tick,500);
 })();

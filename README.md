@@ -3,6 +3,14 @@
 Appli de bord de terrain : plusieurs matchs en même temps, chrono et mi-temps par match,
 alertes de fin de chrono, classement et météo heure par heure.
 
+**Mode d'emploi Android et iPhone : https://jeremyper.github.io/plateau-rugby-13/guide.html**
+
+- Fin de chrono : sonnerie forte et vibration répétées jusqu'à « Couper la sonnerie » (1 minute au plus).
+- Écran gardé allumé dès le coup d'envoi.
+- Chronos calculés depuis l'heure du coup d'envoi et données enregistrées à chaque touche :
+  rien n'est perdu si le téléphone se verrouille ou ferme la page.
+- S'ouvre sans réseau après une première visite.
+
 ## Installation
 1. Copiez tout le dossier dans un site servi en **HTTPS** (Caddy, Nginx Proxy Manager, GitHub Pages…).
    Le HTTPS est obligatoire pour la position, les notifications et l'écran maintenu allumé.
@@ -12,7 +20,9 @@ alertes de fin de chrono, classement et météo heure par heure.
 
 ## Fichiers
 - `index.html` : l'appli complète (données stockées sur le téléphone, rien n'est envoyé ailleurs)
-- `sw.js` : service worker, nécessaire aux notifications sur Android
+- `guide.html` : mode d'emploi à partager (installation Android et iPhone, son, écran verrouillé, données)
+- `sw.js` : service worker, pour les notifications sur Android et l'ouverture sans réseau
+  (changer `VERSION` à chaque mise en ligne)
 - `manifest.webmanifest`, `icon-192.png`, `icon-512.png` : installation sur l'écran d'accueil
 
 ## Services externes
