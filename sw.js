@@ -1,6 +1,6 @@
 // Service worker : notifications sur Android et ouverture de l'appli sans réseau.
 // Changer VERSION à chaque mise en ligne : les téléphones rechargent alors tous les fichiers.
-const VERSION='plateau13-2026-11-19b';
+const VERSION='plateau13-2026-11-19c';
 const APP=['./','index.html','guide.html','manifest.webmanifest','icon-192.png','icon-512.png'];
 
 self.addEventListener('install',e=>{

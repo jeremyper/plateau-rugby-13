@@ -413,21 +413,30 @@ function renderAlerts(){
 
 /* ---------- Écran allumé ---------- */
 const wakeOK='wakeLock' in navigator;
-let wake=null,wantWake=false,wakeBusy=false,wakeDenied=false;
+let wake=null,wantWake=false,wakeBusy=false,wakeDenied=false,wakeAuto=false;
+const anyRunning=()=>S.matches.some(m=>m.status==='live'||m.status==='break');
 async function setWake(on,auto){
   if(wakeBusy)return;wakeBusy=true;wantWake=on;
-  if(on){try{wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>{wake=null;if(ui.view==='live')render()})}catch(e){wake=null;wantWake=false;if(auto)wakeDenied=true;else toast('Le navigateur refuse de garder l’écran allumé ici')}}
-  else{try{if(wake)await wake.release()}catch(e){}wake=null}
+  if(on){try{wake=await navigator.wakeLock.request('screen');wakeAuto=!!auto;wakeDenied=false;wake.addEventListener('release',()=>{wake=null;if(ui.view==='live')render()})}catch(e){wake=null;wantWake=false;if(auto)wakeDenied=true;else toast('Le navigateur refuse de garder l’écran allumé ici')}}
+  else{try{if(wake)await wake.release()}catch(e){}wake=null;wakeAuto=false}
   wakeBusy=false;
   if(ui.view==='live')render();
 }
-/* Écran allumé automatique : au coup d'envoi, et au premier toucher après une réouverture si des matchs sont en cours */
-function autoWake(){if(S.autoWake&&wakeOK&&!wake&&!ui.wakeOff&&!wakeDenied&&S.matches.some(m=>m.status==='live'||m.status==='break'))setWake(true,true)}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){tick();if(wantWake&&!wake)setWake(true,true)}});
+/* Écran allumé tant qu'un chrono tourne (mi-temps comprise) : pas de mise en veille ni de verrouillage automatique.
+   Redemandé si le téléphone le relâche (retour dans l'appli), rendu quand tous les matchs sont finis. */
+function autoWake(){if(S.autoWake&&wakeOK&&!wake&&!wakeBusy&&!ui.wakeOff&&!wakeDenied&&anyRunning())setWake(true,true)}
+function wakeCheck(){
+  if(!wakeOK||wakeBusy||document.visibilityState!=='visible')return;
+  if(wakeAuto&&!anyRunning()){if(wake)setWake(false);else{wantWake=false;wakeAuto=false}return}
+  if(wantWake&&!wake&&!wakeDenied)setWake(true,wakeAuto);else autoWake();
+}
+const wakeRefused=()=>S.autoWake&&!ui.wakeOff&&!wake&&(!wakeOK||wakeDenied);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')tick()});
 
 /* ---------- Tic du chrono ---------- */
 function tick(){
   const hint=$('#touchHint');if(hint)hint.hidden=!needTouch();
+  wakeCheck();
   document.querySelectorAll('[data-clock]').forEach(el=>{
     const m=byId(el.getAttribute('data-clock'));if(!m)return;
     const t=clockText(m);if(el.textContent!==t)el.textContent=t;
@@ -619,6 +628,7 @@ function viewLive(){
   const done=S.matches.filter(m=>m.status==='done'&&visible(m)).length;
   h+='<h2>En cours <span class="cnt">'+live.length+'</span></h2>';
   if(live.length)h+='<div class="notice" id="touchHint"'+(needTouch()?'':' hidden')+'>Touchez l’écran une fois pour réactiver la sonnerie et la vibration des alertes.</div>';
+  if(live.length&&wakeRefused())h+='<div class="notice err" id="wakeHint">Ce téléphone refuse de garder l’écran allumé (mode économie d’énergie, ou iPhone plus ancien qu’iOS 18.4). Pendant le plateau, allongez la mise en veille de l’écran dans les réglages du téléphone.</div>';
   h+=live.length?'<div class="board">'+live.map(boardCard).join('')+'</div>'
     :'<div class="empty"><p>Aucun match en cours. Chaque match a son propre chrono : lancez autant de coups d’envoi que de terrains occupés.</p></div>';
   h+='<h2>À venir <span class="cnt">'+next.length+'</span></h2>';
@@ -813,7 +823,7 @@ function viewPlateau(){
     tick('preAlert','Prévenir aussi 1 minute avant la fin',S.preAlert)+
     tick('notify','Notification du téléphone',S.notify&&ns==='granted',['embedded','unsupported','insecure','denied'].indexOf(ns)>=0)+
     '<p class="note">'+nmsg+'</p>'+
-    (wakeOK?tick('autoWake','Garder l’écran allumé dès le coup d’envoi',S.autoWake):'')+
+    (wakeOK?tick('autoWake','Garder l’écran allumé tant qu’un chrono tourne',S.autoWake):'')+
     '<button class="btn" data-action="test-alert">Tester l’alerte</button>'+
     '<p class="note">En fin de chrono, la sonnerie et la vibration se répètent jusqu’à « Couper la sonnerie » (1 minute au plus). Le son suit le volume des médias : montez-le avant les matchs.</p>'+
     '<p class="note">Écran éteint, le téléphone peut retarder l’alerte jusqu’à ce qu’on le rallume. Les chronos et les scores, eux, ne perdent rien.</p></div>';
@@ -869,7 +879,7 @@ let persistAsked=false;
 function askPersist(){if(persistAsked||embedded)return;persistAsked=true;try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(()=>{})}catch(e){}}
 document.addEventListener('click',ev=>{
   unlockAudio();askPersist();
-  const el=ev.target.closest('[data-action]');if(!el||el.disabled){autoWake();return}
+  const el=ev.target.closest('[data-action]');if(!el||el.disabled){wakeDenied=false;autoWake();return}
   const a=el.getAttribute('data-action'),id=el.getAttribute('data-id'),m=id?byId(id):null;
   switch(a){
     case 'nav':go(el.getAttribute('data-view'));break;
@@ -943,6 +953,7 @@ document.addEventListener('click',ev=>{
     case 'wrefresh':loadWeather(true);break;
     case 'whours':ui.allHours=!ui.allHours;render();break;
   }
+  if(a!=='wake')wakeDenied=false;
   autoWake();
 });
 document.addEventListener('change',ev=>{

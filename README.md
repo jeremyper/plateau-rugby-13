@@ -6,7 +6,7 @@ alertes de fin de chrono, classement et météo heure par heure.
 **Mode d'emploi Android et iPhone : https://jeremyper.github.io/plateau-rugby-13/guide.html**
 
 - Fin de chrono : sonnerie forte et vibration répétées jusqu'à « Couper la sonnerie » (1 minute au plus).
-- Écran gardé allumé dès le coup d'envoi.
+- Pas de mise en veille ni de verrouillage automatique tant qu'un chrono tourne.
 - Chronos calculés depuis l'heure du coup d'envoi et données enregistrées à chaque touche :
   rien n'est perdu si le téléphone se verrouille ou ferme la page.
 - S'ouvre sans réseau après une première visite.
